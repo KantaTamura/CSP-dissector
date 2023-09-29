@@ -27,10 +27,10 @@ f_can.end_              = ProtoField.uint32("csp.end",              "End",      
 -- CSP Extended Fields
 local f_xtd = proto_csp_xtd.fields
 
-f_xtd.source            = ProtoField.uint32("csp.source",           "Source",           base.DEC, nil)
-f_xtd.destination_port  = ProtoField.uint32("csp.destination_port", "Destination Port", base.DEC, nil)
-f_xtd.source_port       = ProtoField.uint32("csp.source_port",      "Source Port",      base.DEC, nil)
-f_xtd.flags             = ProtoField.uint32("csp.flags",            "Flags",            base.DEC, nil)
+f_xtd.source            = ProtoField.uint32("csp.source",           "Source",           base.DEC, nil, 0xFFFC0000)
+f_xtd.destination_port  = ProtoField.uint32("csp.destination_port", "Destination Port", base.DEC, nil, 0x0003F000)
+f_xtd.source_port       = ProtoField.uint32("csp.source_port",      "Source Port",      base.DEC, nil, 0x00000FC0)
+f_xtd.flags             = ProtoField.uint32("csp.flags",            "Flags",            base.DEC, nil, 0x0000003F)
 
 -- CSP CAN Dissector
 function proto_csp.dissector(buffer, pinfo, tree)
@@ -61,6 +61,19 @@ function proto_csp.dissector(buffer, pinfo, tree)
     can_frame_tree:add(f_can.fragment_counter, csp_can_header:le_uint())
     can_frame_tree:add(f_can.begin,            csp_can_header:le_uint())
     can_frame_tree:add(f_can.end_,             csp_can_header:le_uint())
+
+    local csp_begin = csp_can_header:bitfield(6, 1)
+    local csp_end   = csp_can_header:bitfield(7, 1)
+
+    -- CSP Extended Header
+    if csp_begin == 1 then
+        local csp_xtd_header = buffer(csp_frame_start, 4)
+        local xtd_frame_tree = subtree:add(proto_csp_xtd, csp_xtd_header)
+        xtd_frame_tree:add(f_xtd.source,            csp_xtd_header)
+        xtd_frame_tree:add(f_xtd.destination_port,  csp_xtd_header)
+        xtd_frame_tree:add(f_xtd.source_port,       csp_xtd_header)
+        xtd_frame_tree:add(f_xtd.flags,             csp_xtd_header)
+    end
 end
 
 function proto_csp.init()
