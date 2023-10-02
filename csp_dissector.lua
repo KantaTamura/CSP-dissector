@@ -11,7 +11,7 @@ local sll_pkt_f  = Field.new("sll.pkttype")
 local sll_type_f = Field.new("sll.ltype")
 local can_xtd_f  = Field.new("can.flags.xtd")
 local data_len_f = Field.new("data.len")
-local can_padding_f = Field.new("can.padding")
+local can_pad_f  = Field.new("can.padding")
 
 -- Constants
 local SLL_TYPE_CAN  = 0x000C
@@ -51,7 +51,7 @@ function proto_csp.dissector(buffer, pinfo, tree)
     local sll_type = sll_type_f()
     local can_xtd  = can_xtd_f()
     local data_len = data_len_f()
-    local can_padding = can_padding_f()
+    local can_pad  = can_pad_f()
 
     -- only CSP packet (possibility)
     if not(sll_type and can_xtd and data_len) then return end
@@ -59,13 +59,13 @@ function proto_csp.dissector(buffer, pinfo, tree)
 
     pinfo.cols.protocol = proto_csp.name
 
-    local can_padding_len = 0
-    if can_padding then
-        can_padding_len = can_padding.len
+    local can_pad_len = 0
+    if can_pad then
+        can_pad_len = can_pad.len
     end
 
-    local can_frame_start = buffer:len() - data_len.value - can_padding_len - CAN_FRAME_LEN
-    local csp_frame_start = buffer:len() - data_len.value - can_padding_len
+    local can_frame_start = buffer:len() - data_len.value - can_pad_len - CAN_FRAME_LEN
+    local csp_frame_start = buffer:len() - data_len.value - can_pad_len
 
     -- CSP
     local subtree = tree:add(proto_csp, buffer(can_frame_start))
