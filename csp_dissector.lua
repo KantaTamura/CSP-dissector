@@ -1,10 +1,12 @@
 -- Proto definition
 -- "CSP"
 --  ├── "CAN Frame Header"
---  └── "Extended Header"
-local proto_csp     = Proto("CSP", "Cubusat Space Protocol")
-local proto_csp_can = Proto("CSP_CAN_Frame_Header", "CSP - CAN Frame Header")
-local proto_csp_xtd = Proto("CSP_Extendnd_Header",  "CSP - Extended Header")
+--  ├── "Extended Header"
+--  └── "Data"
+local proto_csp      = Proto("CSP", "Cubusat Space Protocol")
+local proto_csp_can  = Proto("CSP_CAN_Frame_Header", "CSP - CAN Frame Header")
+local proto_csp_xtd  = Proto("CSP_Extendnd_Header",  "CSP - Extended Header")
+local proto_csp_data = Proto("CSP_DATA", "CSP - Data")
 
 -- Other Protocol Field
 local sll_pkt_f  = Field.new("sll.pkttype")
@@ -33,6 +35,10 @@ f_xtd.source            = ProtoField.uint32("csp.source",           "Source",   
 f_xtd.destination_port  = ProtoField.uint32("csp.destination_port", "Destination Port", base.DEC, nil, 0x0003F000)
 f_xtd.source_port       = ProtoField.uint32("csp.source_port",      "Source Port",      base.DEC, nil, 0x00000FC0)
 f_xtd.flags             = ProtoField.uint32("csp.flags",            "Flags",            base.DEC, nil, 0x0000003F)
+
+-- CSP Data Fields
+local f_data = proto_csp_data.fields
+f_data.data  = ProtoField.string("csp.data", "Data", base.ASCII)
 
 -- CSP CAN Dissector
 function proto_csp.dissector(buffer, pinfo, tree)
@@ -69,7 +75,6 @@ function proto_csp.dissector(buffer, pinfo, tree)
 
     -- CSP
     local subtree = tree:add(proto_csp, buffer(can_frame_start))
-    subtree:add(f.can_frame_header, buffer(can_frame_start, 4):le_uint())
 
     -- CSP CAN Frame Header
     local csp_can_header = buffer(can_frame_start, 4)
@@ -94,7 +99,7 @@ function proto_csp.dissector(buffer, pinfo, tree)
     -- table key
     local key = tostring(sll_pkt) .. ":" .. tostring(csp_sender) .. ":" .. tostring(csp_dst) .. ":" .. tostring(csp_src_cnt)
 
-     -- CSP Extended Header
+    -- CSP Extended Header
     if csp_begin == 1 then
         local csp_xtd_header = buffer(csp_frame_start, 4)
         local xtd_frame_tree = subtree:add(proto_csp_xtd, csp_xtd_header)
@@ -115,6 +120,9 @@ function proto_csp.dissector(buffer, pinfo, tree)
         xtd_frame_tree:add(f_xtd.source_port,       xtd())
         xtd_frame_tree:add(f_xtd.flags,             xtd())
     end
+
+    -- CSP Data
+
 end
 
 function proto_csp.init()
