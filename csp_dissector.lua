@@ -1,23 +1,24 @@
+-- Proto definition
+-- "CSP"
+--  ├── "CAN Frame Header"
+--  └── "Extended Header"
 local proto_csp     = Proto("CSP", "Cubusat Space Protocol")
 local proto_csp_can = Proto("CSP_CAN_Frame_Header", "CSP - CAN Frame Header")
 local proto_csp_xtd = Proto("CSP_Extendnd_Header",  "CSP - Extended Header")
 
+-- Other Protocol Field
 local sll_pkt_f  = Field.new("sll.pkttype")
 local sll_type_f = Field.new("sll.ltype")
 local can_xtd_f  = Field.new("can.flags.xtd")
 local data_len_f = Field.new("data.len")
 local can_padding_f = Field.new("can.padding")
 
+-- Constants
 local SLL_TYPE_CAN  = 0x000C
 local CAN_FRAME_LEN = 8
 
--- CSP Fields
-local f = proto_csp.fields
-f.can_frame_header  = ProtoField.uint32("csp.can_frame_header", "CAN Frame Header", base.HEX, nil, 0x1FFFFFFF)
-
 -- CSP CAN Fields
 local f_can = proto_csp_can.fields
-
 f_can.prio              = ProtoField.uint32("csp.prio",             "Prio",             base.DEC, nil, 0x18000000)
 f_can.destination       = ProtoField.uint32("csp.destination",      "Destination",      base.DEC, nil, 0x07FFE000)
 f_can.sender            = ProtoField.uint32("csp.sender",           "Sender",           base.DEC, nil, 0x00001F80)
@@ -28,7 +29,6 @@ f_can.end_              = ProtoField.uint32("csp.end",              "End",      
 
 -- CSP Extended Fields
 local f_xtd = proto_csp_xtd.fields
-
 f_xtd.source            = ProtoField.uint32("csp.source",           "Source",           base.DEC, nil, 0xFFFC0000)
 f_xtd.destination_port  = ProtoField.uint32("csp.destination_port", "Destination Port", base.DEC, nil, 0x0003F000)
 f_xtd.source_port       = ProtoField.uint32("csp.source_port",      "Source Port",      base.DEC, nil, 0x00000FC0)
@@ -46,13 +46,14 @@ function proto_csp.dissector(buffer, pinfo, tree)
         return buf:tvb("csp_can_field big_endian")
     end
 
+    -- get fields
     local sll_pkt  = sll_pkt_f()
     local sll_type = sll_type_f()
     local can_xtd  = can_xtd_f()
     local data_len = data_len_f()
     local can_padding = can_padding_f()
 
-    -- only
+    -- only CSP packet (possibility)
     if not(sll_type and can_xtd and data_len) then return end
     if buffer:len() == 0 or sll_type.value ~= SLL_TYPE_CAN or not(can_xtd.value) then return end
 
