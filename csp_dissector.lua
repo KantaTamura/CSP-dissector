@@ -2,6 +2,7 @@ local proto_csp     = Proto("CSP", "Cubusat Space Protocol")
 local proto_csp_can = Proto("CSP_CAN_Frame_Header", "CSP - CAN Frame Header")
 local proto_csp_xtd = Proto("CSP_Extendnd_Header",  "CSP - Extended Header")
 
+local sll_pkt_f  = Field.new("sll.pkttype")
 local sll_type_f = Field.new("sll.ltype")
 local can_xtd_f  = Field.new("can.flags.xtd")
 local data_len_f = Field.new("data.len")
@@ -45,6 +46,7 @@ function proto_csp.dissector(buffer, pinfo, tree)
         return buf:tvb("csp_can_field big_endian")
     end
 
+    local sll_pkt  = sll_pkt_f()
     local sll_type = sll_type_f()
     local can_xtd  = can_xtd_f()
     local data_len = data_len_f()
@@ -89,10 +91,10 @@ function proto_csp.dissector(buffer, pinfo, tree)
     local csp_end      = csp_can_header_big:bitfield(31, 1)
 
     -- table key
-    local key = tostring(csp_sender) .. ":" .. tostring(csp_dst) .. ":" .. tostring(csp_src_cnt)
+    local key = tostring(sll_pkt) .. ":" .. tostring(csp_sender) .. ":" .. tostring(csp_dst) .. ":" .. tostring(csp_src_cnt)
 
      -- CSP Extended Header
-     if csp_begin == 1 then
+    if csp_begin == 1 then
         local csp_xtd_header = buffer(csp_frame_start, 4)
         local xtd_frame_tree = subtree:add(proto_csp_xtd, csp_xtd_header)
         xtd_frame_tree:add(f_xtd.source,            csp_xtd_header)
