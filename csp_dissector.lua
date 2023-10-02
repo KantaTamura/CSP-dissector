@@ -2,6 +2,7 @@ local proto_csp     = Proto("CSP", "Cubusat Space Protocol")
 local proto_csp_can = Proto("CSP_CAN_Frame_Header", "CSP - CAN Frame Header")
 local proto_csp_xtd = Proto("CSP_Extendnd_Header",  "CSP - Extended Header")
 
+local sll_pkt_f  = Field.new("sll.pkttype")
 local sll_type_f = Field.new("sll.ltype")
 local can_xtd_f  = Field.new("can.flags.xtd")
 local data_len_f = Field.new("data.len")
@@ -35,6 +36,17 @@ f_xtd.flags             = ProtoField.uint32("csp.flags",            "Flags",    
 
 -- CSP CAN Dissector
 function proto_csp.dissector(buffer, pinfo, tree)
+    -- 32bit little endian to big endian
+    local function le_to_be(little_bits, start)
+        local buf = ByteArray.new()
+        buf:append(little_bits:bytes(start + 3, 1))
+        buf:append(little_bits:bytes(start + 2, 1))
+        buf:append(little_bits:bytes(start + 1, 1))
+        buf:append(little_bits:bytes(start, 1))
+        return buf:tvb("csp_can_field big_endian")
+    end
+
+    local sll_pkt  = sll_pkt_f()
     local sll_type = sll_type_f()
     local can_xtd  = can_xtd_f()
     local data_len = data_len_f()
@@ -69,10 +81,19 @@ function proto_csp.dissector(buffer, pinfo, tree)
     can_frame_tree:add_le(f_can.begin,            csp_can_header)
     can_frame_tree:add_le(f_can.end_,             csp_can_header)
 
-    local csp_begin = csp_can_header:bitfield(6, 1)
-    local csp_end   = csp_can_header:bitfield(7, 1)
+    -- csp-frame fix endian
+    local csp_can_header_big = le_to_be(buffer, can_frame_start):range(0, 4)
+    local csp_dst      = csp_can_header_big:bitfield(5, 14)
+    local csp_sender   = csp_can_header_big:bitfield(19, 6)
+    local csp_src_cnt  = csp_can_header_big:bitfield(25, 2)
+    local csp_frag_cnt = csp_can_header_big:bitfield(27, 3)
+    local csp_begin    = csp_can_header_big:bitfield(30, 1)
+    local csp_end      = csp_can_header_big:bitfield(31, 1)
 
-    -- CSP Extended Header
+    -- table key
+    local key = tostring(sll_pkt) .. ":" .. tostring(csp_sender) .. ":" .. tostring(csp_dst) .. ":" .. tostring(csp_src_cnt)
+
+     -- CSP Extended Header
     if csp_begin == 1 then
         local csp_xtd_header = buffer(csp_frame_start, 4)
         local xtd_frame_tree = subtree:add(proto_csp_xtd, csp_xtd_header)
@@ -80,10 +101,23 @@ function proto_csp.dissector(buffer, pinfo, tree)
         xtd_frame_tree:add(f_xtd.destination_port,  csp_xtd_header)
         xtd_frame_tree:add(f_xtd.source_port,       csp_xtd_header)
         xtd_frame_tree:add(f_xtd.flags,             csp_xtd_header)
+
+        if ExtendedTable[key] == nil then
+            ExtendedTable[key] = { header=buffer:bytes(csp_frame_start, 4) }
+        end
+    elseif not(ExtendedTable[key] == nil) then
+        local xtd = ExtendedTable[key].header:tvb("csp_xtd_header")
+
+        local xtd_frame_tree = subtree:add(proto_csp_xtd, xtd())
+        xtd_frame_tree:add(f_xtd.source,            xtd())
+        xtd_frame_tree:add(f_xtd.destination_port,  xtd())
+        xtd_frame_tree:add(f_xtd.source_port,       xtd())
+        xtd_frame_tree:add(f_xtd.flags,             xtd())
     end
 end
 
 function proto_csp.init()
+    ExtendedTable = {}
 end
 
 register_postdissector(proto_csp)
