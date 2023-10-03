@@ -66,8 +66,6 @@ function proto_csp.dissector(buffer, pinfo, tree)
     if not(sll_type and can_xtd and data_len) then return end
     if buffer:len() == 0 or sll_type.value ~= SLL_TYPE_CAN or not(can_xtd.value) then return end
 
-    pinfo.cols.protocol = proto_csp.name
-
     local can_pad_len = 0
     if can_pad then
         can_pad_len = can_pad.len
@@ -160,6 +158,10 @@ function proto_csp.dissector(buffer, pinfo, tree)
         data_tree:add(f_data.data, d())
     end
 
+    -- pinfo
+    pinfo.cols.protocol = proto_csp.name
+    pinfo.cols.src = csp_sender
+    pinfo.cols.dst = csp_dst
 end
 
 function proto_csp.init()
