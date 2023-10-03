@@ -13,11 +13,13 @@ local sll_pkt_f  = Field.new("sll.pkttype")
 local sll_type_f = Field.new("sll.ltype")
 local can_xtd_f  = Field.new("can.flags.xtd")
 local data_len_f = Field.new("data.len")
+local can_len_f  = Field.new("can.len")
 local can_pad_f  = Field.new("can.padding")
 
 -- Constants
 local SLL_TYPE_CAN  = 0x000C
 local CAN_FRAME_LEN = 8
+local CSP_EXTENDED_FRAME_LEN = 4
 
 -- CSP CAN Fields
 local f_can = proto_csp_can.fields
@@ -38,7 +40,7 @@ f_xtd.flags             = ProtoField.uint32("csp.flags",            "Flags",    
 
 -- CSP Data Fields
 local f_data = proto_csp_data.fields
-f_data.data  = ProtoField.string("csp.data", "Data", base.ASCII)
+f_data.data  = ProtoField.string("csp.data", "Data", base.UNICODE)
 
 -- CSP CAN Dissector
 function proto_csp.dissector(buffer, pinfo, tree)
@@ -57,6 +59,7 @@ function proto_csp.dissector(buffer, pinfo, tree)
     local sll_type = sll_type_f()
     local can_xtd  = can_xtd_f()
     local data_len = data_len_f()
+    local can_len  = can_len_f()
     local can_pad  = can_pad_f()
 
     -- only CSP packet (possibility)
@@ -122,11 +125,47 @@ function proto_csp.dissector(buffer, pinfo, tree)
     end
 
     -- CSP Data
+    if DataTable[key] == nil then
+        DataTable[key] = {}
+    end
+
+    if pinfo.visited == false then
+        local extended_header_len = 0
+        if csp_begin == 1 then
+            extended_header_len = CSP_EXTENDED_FRAME_LEN
+        end
+
+        local id = csp_frag_cnt
+        while not(DataTable[key][id] == nil) do
+            id = id + 8
+        end
+        DataTable[key][id] = { data=buffer:bytes(csp_frame_start + extended_header_len, can_len.value - extended_header_len) }
+    end
+
+    if EndFlagTable[key] == nil then
+        EndFlagTable[key] = false
+    end
+
+    if csp_end == 1 then
+        EndFlagTable[key] = true
+    end
+
+    if EndFlagTable[key] == true then
+        local buf = ByteArray.new()
+        for i = 0, #DataTable[key] do
+            buf:append( DataTable[key][i].data )
+        end
+        local d = buf:tvb("merged data")
+        local data_tree = subtree:add(proto_csp_data, d())
+        data_tree:add(f_data.data, d())
+    end
 
 end
 
 function proto_csp.init()
     ExtendedTable = {}
+    DataTable = {}
+    EndFlagTable = {}
 end
 
 register_postdissector(proto_csp)
