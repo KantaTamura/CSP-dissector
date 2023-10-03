@@ -124,7 +124,7 @@ function proto_csp.dissector(buffer, pinfo, tree)
 
     -- CSP Data
     if DataTable[key] == nil then
-        DataTable[key] = {}
+        DataTable[key] = { ended=false, fragments={} }
     end
 
     if pinfo.visited == false then
@@ -134,24 +134,20 @@ function proto_csp.dissector(buffer, pinfo, tree)
         end
 
         local id = csp_frag_cnt
-        while not(DataTable[key][id] == nil) do
+        while not(DataTable[key].fragments[id] == nil) do
             id = id + 8
         end
-        DataTable[key][id] = { data=buffer:bytes(csp_frame_start + extended_header_len, can_len.value - extended_header_len) }
-    end
-
-    if EndFlagTable[key] == nil then
-        EndFlagTable[key] = false
+        DataTable[key].fragments[id] = { data=buffer:bytes(csp_frame_start + extended_header_len, can_len.value - extended_header_len) }
     end
 
     if csp_end == 1 then
-        EndFlagTable[key] = true
+        DataTable[key].ended = true
     end
 
-    if EndFlagTable[key] == true then
+    if DataTable[key].ended == true then
         local buf = ByteArray.new()
-        for i = 0, #DataTable[key] do
-            buf:append( DataTable[key][i].data )
+        for i = 0, #DataTable[key].fragments do
+            buf:append( DataTable[key].fragments[i].data )
         end
         local d = buf:tvb("merged data")
         local data_tree = subtree:add(proto_csp_data, d())
@@ -167,7 +163,6 @@ end
 function proto_csp.init()
     ExtendedTable = {}
     DataTable = {}
-    EndFlagTable = {}
 end
 
 register_postdissector(proto_csp)
