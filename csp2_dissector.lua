@@ -3,10 +3,10 @@
 --  ├── "CAN Frame Header"
 --  ├── "Extended Header"
 --  └── "Data"
-local proto_csp      = Proto("CSP", "Cubusat Space Protocol")
-local proto_csp_can  = Proto("CSP_CAN_Frame_Header", "CSP - CAN Frame Header")
-local proto_csp_xtd  = Proto("CSP_Extendnd_Header",  "CSP - Extended Header")
-local proto_csp_data = Proto("CSP_DATA", "CSP - Data")
+local proto_csp      = Proto("CSPv2", "Cubusat Space Protocol version 2.0")
+local proto_csp_can  = Proto("CSPv2_CAN_Frame_Header", "CSP 2.0 - CAN Frame Header")
+local proto_csp_xtd  = Proto("CSPv2_Extendnd_Header",  "CSP 2.0 - Extended Header")
+local proto_csp_data = Proto("CSPv2_DATA", "CSP 2.0 - Data")
 
 -- Other Protocol Field
 local sll_pkt_f  = Field.new("sll.pkttype")
