@@ -31,8 +31,13 @@ f_can.id     = ProtoField.uint32("csp1.id",     "ID",          base.DEC, nil, 0x
 
 -- CSP Extended Fields
 local f_xtd = proto_csp1_xtd.fields
-f_xtd.xtd_id = ProtoField.uint32("csp1.xtd", "Base Extended ID", base.DEC)
-f_xtd.length = ProtoField.uint16("csp1.len", "Data Length"     , base.DEC)
+f_xtd.pri    = ProtoField.uint32("csp1.xtd.pri",   "Priority",            base.DEC, nil, 0xC0000000)
+f_xtd.src    = ProtoField.uint32("csp1.xtd.src",   "Source Address",      base.DEC, nil, 0x3E000000)
+f_xtd.dst    = ProtoField.uint32("csp1.xtd.dst",   "Destination Address", base.DEC, nil, 0x01F00000)
+f_xtd.dport  = ProtoField.uint32("csp1.xtd.dport", "Destination Port",    base.DEC, nil, 0x000FC000)
+f_xtd.sport  = ProtoField.uint32("csp1.xtd.sport", "Source Port",         base.DEC, nil, 0x00003F00)
+f_xtd.flags  = ProtoField.uint32("csp1.xtd.flags", "Flags",               base.DEC, nil, 0x000000FF)
+f_xtd.length = ProtoField.uint16("csp1.xtd.len",   "Data Length",         base.DEC)
 
 -- CSP Data Fields
 local f_data = proto_csp1_data.fields
@@ -99,7 +104,12 @@ function proto_csp1.dissector(buffer, pinfo, tree)
 
     local xtd = ExtendedTable[key].header:tvb("csp1_xtd_header")
     local xtd_frame_tree = subtree:add(proto_csp1_xtd, xtd())
-    xtd_frame_tree:add(f_xtd.xtd_id, xtd(0, 4))
+    xtd_frame_tree:add(f_xtd.pri,    xtd(0, 4))
+    xtd_frame_tree:add(f_xtd.src,    xtd(0, 4))
+    xtd_frame_tree:add(f_xtd.dst,    xtd(0, 4))
+    xtd_frame_tree:add(f_xtd.dport,  xtd(0, 4))
+    xtd_frame_tree:add(f_xtd.sport,  xtd(0, 4))
+    xtd_frame_tree:add(f_xtd.flags,  xtd(0, 4))
     xtd_frame_tree:add(f_xtd.length, xtd(4, 2))
 
     -- CSP Data
