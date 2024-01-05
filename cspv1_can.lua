@@ -56,16 +56,14 @@ function proto_csp1.dissector(buffer, pinfo, tree)
     end
 
     -- get fields
-    local sll_pkt  = sll_pkt_f()
-    local sll_type = sll_type_f()
     local can_xtd  = can_xtd_f()
     local data_len = data_len_f()
     local can_len  = can_len_f()
     local can_pad  = can_pad_f()
 
     -- only CSP packet (possibility)
-    if not(sll_type and can_xtd and data_len) then return end
-    if buffer:len() == 0 or sll_type.value ~= SLL_TYPE_CAN or not(can_xtd.value) then return end
+    if not(can_xtd and data_len) then return end
+    if buffer:len() == 0 or not(can_xtd.value) then return end
 
     local can_pad_len = 0
     if can_pad then
@@ -95,7 +93,7 @@ function proto_csp1.dissector(buffer, pinfo, tree)
     local csp_id     = csp_can_header_big:bitfield(22, 10)
 
     -- table key
-    local key = tostring(sll_pkt) .. ":" .. tostring(csp_src) .. ":" .. tostring(csp_dst) .. ":" .. tostring(csp_id)
+    local key = tostring(csp_src) .. ":" .. tostring(csp_dst) .. ":" .. tostring(csp_id)
 
     -- CSP Extended Header
     if ExtendedTable[key] == nil then
