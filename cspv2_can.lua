@@ -44,16 +44,6 @@ f_data.data  = ProtoField.string("csp.data", "Data", base.UNICODE)
 
 -- CSP CAN Dissector
 function proto_csp.dissector(buffer, pinfo, tree)
-    -- 32bit little endian to big endian
-    local function le_to_be(little_bits, start)
-        local buf = ByteArray.new()
-        buf:append(little_bits:bytes(start + 3, 1))
-        buf:append(little_bits:bytes(start + 2, 1))
-        buf:append(little_bits:bytes(start + 1, 1))
-        buf:append(little_bits:bytes(start, 1))
-        return buf:tvb("csp_can_field big_endian")
-    end
-
     -- get fields
     local can_xtd  = can_xtd_f()
     local data_len = data_len_f()
@@ -78,22 +68,21 @@ function proto_csp.dissector(buffer, pinfo, tree)
     -- CSP CAN Frame Header
     local csp_can_header = buffer(can_frame_start, 4)
     local can_frame_tree = subtree:add(proto_csp_can, csp_can_header)
-    can_frame_tree:add_le(f_can.prio,             csp_can_header)
-    can_frame_tree:add_le(f_can.destination,      csp_can_header)
-    can_frame_tree:add_le(f_can.sender,           csp_can_header)
-    can_frame_tree:add_le(f_can.source_count,     csp_can_header)
-    can_frame_tree:add_le(f_can.fragment_counter, csp_can_header)
-    can_frame_tree:add_le(f_can.begin,            csp_can_header)
-    can_frame_tree:add_le(f_can.end_,             csp_can_header)
+    can_frame_tree:add(f_can.prio,             csp_can_header)
+    can_frame_tree:add(f_can.destination,      csp_can_header)
+    can_frame_tree:add(f_can.sender,           csp_can_header)
+    can_frame_tree:add(f_can.source_count,     csp_can_header)
+    can_frame_tree:add(f_can.fragment_counter, csp_can_header)
+    can_frame_tree:add(f_can.begin,            csp_can_header)
+    can_frame_tree:add(f_can.end_,             csp_can_header)
 
     -- csp-frame fix endian
-    local csp_can_header_big = le_to_be(buffer, can_frame_start):range(0, 4)
-    local csp_dst      = csp_can_header_big:bitfield(5, 14)
-    local csp_sender   = csp_can_header_big:bitfield(19, 6)
-    local csp_src_cnt  = csp_can_header_big:bitfield(25, 2)
-    local csp_frag_cnt = csp_can_header_big:bitfield(27, 3)
-    local csp_begin    = csp_can_header_big:bitfield(30, 1)
-    local csp_end      = csp_can_header_big:bitfield(31, 1)
+    local csp_dst      = csp_can_header:bitfield(5, 14)
+    local csp_sender   = csp_can_header:bitfield(19, 6)
+    local csp_src_cnt  = csp_can_header:bitfield(25, 2)
+    local csp_frag_cnt = csp_can_header:bitfield(27, 3)
+    local csp_begin    = csp_can_header:bitfield(30, 1)
+    local csp_end      = csp_can_header:bitfield(31, 1)
 
     -- table key
     local key = tostring(csp_sender) .. ":" .. tostring(csp_dst) .. ":" .. tostring(csp_src_cnt)
