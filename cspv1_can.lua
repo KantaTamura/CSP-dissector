@@ -43,16 +43,6 @@ f_data.data  = ProtoField.string("csp1.data", "Data", base.UNICODE)
 
 -- CSP CAN Dissector
 function proto_csp1.dissector(buffer, pinfo, tree)
-    -- 32bit little endian to big endian
-    local function le_to_be(little_bits, start)
-        local buf = ByteArray.new()
-        buf:append(little_bits:bytes(start + 3, 1))
-        buf:append(little_bits:bytes(start + 2, 1))
-        buf:append(little_bits:bytes(start + 1, 1))
-        buf:append(little_bits:bytes(start, 1))
-        return buf:tvb("csp1_can_field big_endian")
-    end
-
     -- get fields
     local can_xtd  = can_xtd_f()
     local data_len = data_len_f()
@@ -77,18 +67,17 @@ function proto_csp1.dissector(buffer, pinfo, tree)
     -- CSP CAN Frame Header
     local csp_can_header = buffer(can_frame_start, 4)
     local can_frame_tree = subtree:add(proto_csp1_can, csp_can_header)
-    can_frame_tree:add_le(f_can.src,    csp_can_header)
-    can_frame_tree:add_le(f_can.dst,    csp_can_header)
-    can_frame_tree:add_le(f_can.flag,   csp_can_header)
-    can_frame_tree:add_le(f_can.remain, csp_can_header)
-    can_frame_tree:add_le(f_can.id,     csp_can_header)
+    can_frame_tree:add(f_can.src,    csp_can_header)
+    can_frame_tree:add(f_can.dst,    csp_can_header)
+    can_frame_tree:add(f_can.flag,   csp_can_header)
+    can_frame_tree:add(f_can.remain, csp_can_header)
+    can_frame_tree:add(f_can.id,     csp_can_header)
 
     -- csp-frame fix endian
-    local csp_can_header_big = le_to_be(buffer, can_frame_start):range(0, 4)
-    local csp_src    = csp_can_header_big:bitfield(3, 5)
-    local csp_dst    = csp_can_header_big:bitfield(8, 5)
-    local csp_remain = csp_can_header_big:bitfield(14, 8)
-    local csp_id     = csp_can_header_big:bitfield(22, 10)
+    local csp_src    = csp_can_header:bitfield(3, 5)
+    local csp_dst    = csp_can_header:bitfield(8, 5)
+    local csp_remain = csp_can_header:bitfield(14, 8)
+    local csp_id     = csp_can_header:bitfield(22, 10)
 
     -- table key
     local key = tostring(csp_src) .. ":" .. tostring(csp_dst) .. ":" .. tostring(csp_id)
