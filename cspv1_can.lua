@@ -76,11 +76,33 @@ function proto_csp1.dissector(buffer, pinfo, tree)
     -- csp-frame fix endian
     local csp_src    = csp_can_header:bitfield(3, 5)
     local csp_dst    = csp_can_header:bitfield(8, 5)
+    local csp_flag   = csp_can_header:bitfield(13, 1)
     local csp_remain = csp_can_header:bitfield(14, 8)
     local csp_id     = csp_can_header:bitfield(22, 10)
 
     -- table key
-    local key = tostring(csp_src) .. ":" .. tostring(csp_dst) .. ":" .. tostring(csp_id)
+    local key
+    local base = tostring(csp_src) .. ":" .. tostring(csp_dst) .. ":" .. tostring(csp_id)
+    if pinfo.visited == false and csp_flag == 0 then
+        local buf = base
+        local id = csp_id
+        while DataTable[buf] and DataTable[buf].ended == true do
+            id = id + 1024
+            buf = tostring(csp_src) .. ":" .. tostring(csp_dst) .. ":" .. tostring(id)
+        end
+        key = buf
+        if KeyTable[base] == nil then
+            KeyTable[base] = {}
+        end
+        table.insert(KeyTable[base], { start = pinfo.number, key = key })
+    else
+        for i = 1, #KeyTable[base] do
+            if KeyTable[base][i].start > pinfo.number then
+                break
+            end
+            key = KeyTable[base][i].key
+        end
+    end
 
     -- CSP Extended Header
     if ExtendedTable[key] == nil then
@@ -131,6 +153,7 @@ end
 function proto_csp1.init()
     ExtendedTable = {}
     DataTable = {}
+    KeyTable = {}
 end
 
 register_postdissector(proto_csp1)

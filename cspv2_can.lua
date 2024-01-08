@@ -83,7 +83,28 @@ function proto_csp.dissector(buffer, pinfo, tree)
     local csp_end      = csp_can_header:bitfield(31, 1)
 
     -- table key
-    local key = tostring(csp_sender) .. ":" .. tostring(csp_dst) .. ":" .. tostring(csp_src_cnt)
+    local key
+    local base = tostring(csp_sender) .. ":" .. tostring(csp_dst) .. ":" .. tostring(csp_src_cnt)
+    if pinfo.visited == false and csp_begin == 1 then
+        local buf = base
+        local id = csp_src_cnt
+        while DataTable[buf] and DataTable[buf].ended == true do
+            id = id + 4
+            buf = tostring(csp_sender) .. ":" .. tostring(csp_dst) .. ":" .. tostring(id)
+        end
+        key = buf
+        if KeyTable[base] == nil then
+            KeyTable[base] = {}
+        end
+        table.insert(KeyTable[base], { start = pinfo.number, key = key })
+    else
+        for i = 1, #KeyTable[base] do
+            if KeyTable[base][i].start > pinfo.number then
+                break
+            end
+            key = KeyTable[base][i].key
+        end
+    end
 
     -- CSP Extended Header
     if csp_begin == 1 then
@@ -148,6 +169,7 @@ end
 function proto_csp.init()
     ExtendedTable = {}
     DataTable = {}
+    KeyTable = {}
 end
 
 register_postdissector(proto_csp)
