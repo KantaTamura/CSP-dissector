@@ -23,7 +23,9 @@ local CSP_EXTENDED_FRAME_LEN = 6
 local f_can = proto_csp1_can.fields
 f_can.src    = ProtoField.uint32("csp1.src",    "Source",      base.DEC, nil, 0x1F000000)
 f_can.dst    = ProtoField.uint32("csp1.dst",    "Destination", base.DEC, nil, 0x00F80000)
-f_can.flag   = ProtoField.uint32("csp1.flag",   "Flag",        base.DEC, nil, 0x00040000)
+f_can.flag   = ProtoField.uint32("csp1.flag",   "Flag",        base.DEC, {
+				    [0] = "Begin",
+				    [1] = "More"}, 0x00040000)
 f_can.remain = ProtoField.uint32("csp1.remain", "Remain",      base.DEC, nil, 0x0003FC00)
 f_can.id     = ProtoField.uint32("csp1.id",     "ID",          base.DEC, nil, 0x000003FF)
 
